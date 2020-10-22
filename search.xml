@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search> 
+  
+  
+    
+    <entry>
+      <title>ABPvNext框架后台学习笔记</title>
+      <link href="2020/10/20/abpvnext-kuang-jia-hou-tai-xue-xi-bi-ji/"/>
+      <url>2020/10/20/abpvnext-kuang-jia-hou-tai-xue-xi-bi-ji/</url>
+      
+        <content type="html"><![CDATA[<h2 id="ABPvNext框架官网"><a href="#ABPvNext框架官网" class="headerlink" title="ABPvNext框架官网"></a>ABPvNext框架官网</h2><p>ABP vNext框架官网<a href="https://abp.io/">https://abp.io/</a><br><img src="ABPvNext%E6%A1%86%E6%9E%B6%E5%AE%98%E7%BD%91.png" alt="图：ABPvNext框架官网"></p><h2 id="创建实体"><a href="#创建实体" class="headerlink" title="创建实体"></a>创建实体</h2><p>Domain层创建Book类<br><img src="Domain%E5%B1%82%E5%88%9B%E5%BB%BABook%E7%B1%BB.png" alt="图：Domain层创建Book类"><br>实体继承AuditedAggregateRoot，则在操作该表时，别人无法操作。带有锁<br>实体继承FullAuditedAggregateRoot，则在AuditedAggregateRoot基础上多了一个<font color='red'>软删除</font><br>还有一种是继承AuditedEntity，这是普通的情况</p><p><font color='red'>注：价格一般是用Decimal类型，这边学习暂时用float</font><br><img src="%E4%BB%B7%E6%A0%BC%E7%94%A8Decimal.png" alt="图：价格用Decimal"></p><pre class=" language-c#"><code class="language-c#">using System;using Volo.Abp.Domain.Entities.Auditing;namespace Acme.BookStore&#123;    public class Book:FullAuditedAggregateRoot<Guid>    &#123;        public string Name &#123; get; set; &#125;        public BookType Type &#123; get; set; &#125;        public DateTime PublishDate &#123; get; set; &#125;        public float Price &#123; get; set; &#125;        protected Book()        &#123;        &#125;        public Book(Guid id, string name, BookType type, DateTime publishDate, float price) : base(id)        &#123;            Id=id;            Name = name;            Type = type;            PublishDate = publishDate;            Price = price;        &#125;    &#125;    public enum BookType    &#123;        Undefined,        Adventure,        Biography,        Dystopia,        Fantastic,        Horror,        Science,        ScienceFiction,        Poetry    &#125;&#125;</code></pre><h2 id="注册实体"><a href="#注册实体" class="headerlink" title="注册实体"></a>注册实体</h2><p>先将实体信息注册到EntityFrameworkCore层的DbContext中<br><img src="%E5%AE%9E%E4%BD%93%E4%BF%A1%E6%81%AF%E6%B3%A8%E5%86%8C%E5%88%B0EntityFrameworkCore%E5%B1%82%E7%9A%84DbContext.png" alt="图：实体信息注册到EntityFrameworkCore层的DbContext"><br>随后配置注册实体<br><img src="%E9%85%8D%E7%BD%AE%E6%B3%A8%E5%86%8C%E5%AE%9E%E4%BD%93.png" alt="图：配置注册实体"></p><pre class=" language-c#"><code class="language-c#">builder.Entity<Book>(b =>&#123;    b.ToTable(BookStoreConsts.DbTablePrefix + "Book", BookStoreConsts.DbSchema);    b.ConfigureByConvention(); //auto configure for the base class props    b.Property(x=>x.Name).IsRequired().HasMaxLength(BookStoreConsts.HasMaxLength);&#125;);</code></pre><p>有可能会调用Domain层的BookStoreConsts.cs中自定义的常量<br><img src="Domain%E5%B1%82%E7%9A%84BookStoreConsts.cs%E4%B8%AD%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E5%B8%B8%E9%87%8F.png" alt="图：Domain层的BookStoreConsts.cs中自定义的常量"></p><h2 id="修改数据库连接字符串并执行命令生成建表代码"><a href="#修改数据库连接字符串并执行命令生成建表代码" class="headerlink" title="修改数据库连接字符串并执行命令生成建表代码"></a>修改数据库连接字符串并执行命令生成建表代码</h2><p>修改相应层的数据库连接<br>1、IdentityServer层修改appsettings.json文件的数据库连接字符串<br>2、EntityFrameworkCore.DbMigrations层修改appsettings.json文件（没有则新建json文件）的数据库连接字符串<br>3、HttpApi.Host层修改appsettings.json文件的数据库连接字符串<br>4、DbMigrator层修改appsettings.json文件的数据库连接字符串</p><pre class=" language-c#"><code class="language-c#">"ConnectionStrings": &#123;  "Default": "data source=192.168.xx.xx;initial catalog=BookStore;user id=sa;password=xxxxxx"&#125;,</code></pre><p>随后，执行命令生成建表代码。<font color='red'>（在CMD命令行 或 Rider的Terminal执行命令）</font><br>3.x版本的.net core在命令行中执行，以使用dotnet ef命令</p><pre class=" language-c#"><code class="language-c#">dotnet tool install --global dotnet-ef</code></pre><p><img src="%E5%AE%89%E8%A3%85dotnet-ef%E5%91%BD%E4%BB%A4.png" alt="图：安装dotnet-ef命令"></p><p>打开命令行并进入EntityFrameworkCore.DbMigrations层的路径，随后执行下面语句</p><pre class=" language-c#"><code class="language-c#">cd C:\asp_workspace\BookStore\src\Acme.BookStore.EntityFrameworkCore.DbMigrations</code></pre><p><img src="%E8%BF%9B%E5%85%A5EntityFrameworkCore.DbMigrations%E5%B1%82.png" alt="图：进入EntityFrameworkCore.DbMigrations层"></p><pre class=" language-c#"><code class="language-c#">dotnet add package Microsoft.EntityFrameworkCore.Design</code></pre><p><img src="%E6%B7%BB%E5%8A%A0Design%E5%8C%85.png" alt="图：添加Design包"></p><pre class=" language-c#"><code class="language-c#">dotnet ef migrations add “created_book_entity” </code></pre><p><img src="%E7%94%9F%E6%88%90migrations.png" alt="图：生成migrations"></p><p>可以看到EntityFrameworkCore.DbMigrations层的Migrations文件夹中新生成了一个文件<br><img src="Migrations%E6%96%87%E4%BB%B6%E5%A4%B9%E4%B8%AD%E6%96%B0%E7%94%9F%E6%88%90%E7%9A%84%E6%96%87%E4%BB%B6.png" alt="图：Migrations文件夹中新生成的文件"></p><h2 id="运行DbMigrator以生成数据库和表"><a href="#运行DbMigrator以生成数据库和表" class="headerlink" title="运行DbMigrator以生成数据库和表"></a>运行DbMigrator以生成数据库和表</h2><p><img src="%E7%94%9F%E6%88%90%E6%95%B0%E6%8D%AE%E5%BA%93%E5%92%8C%E8%A1%A81.png" alt="图：生成数据库和表1"><br><img src="%E7%94%9F%E6%88%90%E6%95%B0%E6%8D%AE%E5%BA%93%E5%92%8C%E8%A1%A82.png" alt="图：生成数据库和表2"></p><p>=============================⬇⬇⬇可能会出现的问题⬇⬇⬇=========================<br>如果出现版本不一致错误，到相应的csproj解决方案中去掉类似下方的代码，重新运行即可<br><img src="%E7%94%9F%E6%88%90%E6%95%B0%E6%8D%AE%E5%BA%93%E5%92%8C%E8%A1%A83.png" alt="图：生成数据库和表3"><br><img src="%E7%94%9F%E6%88%90%E6%95%B0%E6%8D%AE%E5%BA%93%E5%92%8C%E8%A1%A84.png" alt="图：生成数据库和表4"><br>解决方案如下：<br><img src="%E7%94%9F%E6%88%90%E6%95%B0%E6%8D%AE%E5%BA%93%E5%92%8C%E8%A1%A85.png" alt="图：生成数据库和表5"><br><img src="%E7%94%9F%E6%88%90%E6%95%B0%E6%8D%AE%E5%BA%93%E5%92%8C%E8%A1%A86.png" alt="图：生成数据库和表6"><br>=============================⬆⬆⬆可能会出现的问题⬆⬆⬆=========================</p><h2 id="Application-Contracts层建立对应实体的DTO，设置实体数据到DTO及操作DTO的转换"><a href="#Application-Contracts层建立对应实体的DTO，设置实体数据到DTO及操作DTO的转换" class="headerlink" title="Application.Contracts层建立对应实体的DTO，设置实体数据到DTO及操作DTO的转换"></a>Application.Contracts层建立对应实体的DTO，设置实体数据到DTO及操作DTO的转换</h2><p>因为是严格分层，这边要使用BookType类型，只会引用Domain.Shared层的实体。所以将上方的BookType单独抽成一个类，放到Domain.Shared层中<br><img src="BookType%E7%B1%BB%E5%9E%8B%E6%8A%BD%E5%8F%96%E6%94%BE%E5%88%B0Domain.Shared%E5%85%AC%E5%85%B1%E5%AE%9E%E4%BD%93%E5%B1%82.png" alt="图：BookType类型抽取放到Domain.Shared公共实体层"></p><p>随后Application.Contracts层写实体的DTO<br>这边DTO可以继承AuditedEntityDto，也可以继承EntityDto<br><img src="Application.Contracts%E5%B1%82%E5%86%99%E5%AE%9E%E4%BD%93%E7%9A%84DTO.png" alt="图：Application.Contracts层写实体的DTO"></p><p>再在里面写创建更新操作的DTO，可以做字段长度、是否必填等的限制<br><img src="%E5%AE%9E%E4%BD%93%E7%9A%84%E5%88%9B%E5%BB%BA%E6%9B%B4%E6%96%B0%E6%93%8D%E4%BD%9C%E7%9A%84DTO.png" alt="图：实体的创建更新操作的DTO"></p><p><em>设置实体数据到DTO以及操作DTO的转换</em><br>Book数据转到BookDto(用于查询)<br>CreateUpdateBookDto数据转到Book(用于创建创建和更新)<br><font color='red'>相当于Book实体是和数据库打交道的底层实体</font></p><p><img src="%E8%AE%BE%E7%BD%AE%E5%AE%9E%E4%BD%93%E6%95%B0%E6%8D%AE%E5%88%B0DTO%E4%BB%A5%E5%8F%8A%E6%93%8D%E4%BD%9CDTO%E7%9A%84%E8%BD%AC%E6%8D%A2.png" alt="图：设置实体数据到DTO以及操作DTO的转换"><br>如果要反向转，直接再后面加一个.ReverseMap()</p><pre class=" language-c#"><code class="language-c#">//从BookDto反向转成BookCreateMap<Book, BookDto>().ReverseMap();</code></pre><h2 id="写CRUD接口及实现"><a href="#写CRUD接口及实现" class="headerlink" title="写CRUD接口及实现"></a>写CRUD接口及实现</h2><p>Application.Contracts层写接口<br><img src="Application.Contracts%E5%B1%82%E5%86%99%E6%8E%A5%E5%8F%A3.png" alt="图：Application.Contracts层写接口"><br>Application层写对应接口的实现<br><img src="Application%E5%B1%82%E5%86%99%E5%AF%B9%E5%BA%94%E6%8E%A5%E5%8F%A3%E7%9A%84%E5%AE%9E%E7%8E%B0.png" alt="图：Application层写对应接口的实现"></p><h2 id="运行HttpApi-Host层（Swagger展示API接口）"><a href="#运行HttpApi-Host层（Swagger展示API接口）" class="headerlink" title="运行HttpApi.Host层（Swagger展示API接口）"></a>运行HttpApi.Host层（Swagger展示API接口）</h2><p>=============================⬇⬇⬇可能会出现的问题⬇⬇⬇=========================<br>运行之前，如果单独安装Rider的，可能需要安装下IIS<br><img src="%E5%8D%95%E7%8B%AC%E5%AE%89%E8%A3%85Rider%E7%9A%84%EF%BC%8C%E5%8F%AF%E8%83%BD%E9%9C%80%E8%A6%81%E5%AE%89%E8%A3%85%E4%B8%8BIIS.png" alt="图：单独安装Rider的，可能需要安装下IIS"><br>点击上方链接后会进入微软官网下载，根据自己的操作系统下载对应版本，运行安装即可<br>这边操作系统是64位的，下载amd64的中文版<br><img src="IIS%E7%9A%84amd64%E7%9A%84%E4%B8%AD%E6%96%87%E7%89%88.png" alt="图：IIS的amd64的中文版"><br>=============================⬆⬆⬆可能会出现的问题⬆⬆⬆=========================</p><p>随后，运行HttpApi.Host即可进入swagger展示API接口界面<br><font color='red'>注：要选择后面不带“IIS Express”的运行</font></p><p><img src="%E8%BF%90%E8%A1%8CHttpApi.Host%E5%90%8E%E9%9D%A2%E4%B8%8D%E5%B8%A6IISExpress%E5%AD%97%E6%A0%B7.png" alt="图：运行HttpApi.Host后面不带IISExpress字样"><br><img src="swagger%E6%8E%A5%E5%8F%A3%E5%9B%BE.png" alt="图：swagger接口图"></p><p><font color='red'>注：上述url是https开头的地址，Rider可能会提示需要安装SSL信任证书。安装一下即可</font></p><h2 id="接口测试"><a href="#接口测试" class="headerlink" title="接口测试"></a>接口测试</h2><p><strong>测试新增，点击“POST”接口</strong><br><img src="%E6%8E%A5%E5%8F%A3%E6%B5%8B%E8%AF%951.png" alt="图：接口测试1"><br><img src="%E6%8E%A5%E5%8F%A3%E6%B5%8B%E8%AF%952.png" alt="图：接口测试2"><br>修改相应的值，然后“Execute”执行一下。出现状态值是200即表示执行成功<br><img src="Execute%E6%89%A7%E8%A1%8CPOST%E6%8E%A5%E5%8F%A31.png" alt="图：Execute执行POST接口1"><br><img src="Execute%E6%89%A7%E8%A1%8CPOST%E6%8E%A5%E5%8F%A32.png" alt="图：Execute执行POST接口2"><br>最后看下数据库。有数据插入<br><font color='red'>注：除了实体的属性外，其他字段都是通过继承过来产生的。如创建人，创建时间，最后修改人等</font></p><p><img src="%E6%89%A7%E8%A1%8CPOST%E6%8E%A5%E5%8F%A3%E5%90%8E%E7%9A%84%E6%95%B0%E6%8D%AE%E6%8F%92%E5%85%A5.png" alt="图：执行POST接口后的数据插入"></p><p><strong>测试更新，点击“PUT”接口</strong><br>拿到上述的id，然后和上述类似，填入id,修改相应值，执行下即可<br><img src="%E6%B5%8B%E8%AF%95PUT%E6%8E%A5%E5%8F%A3.png" alt="图：测试PUT接口"><br>执行结果如下<br><img src="%E6%89%A7%E8%A1%8CPUT%E6%8E%A5%E5%8F%A3%E7%9A%84%E7%BB%93%E6%9E%9C.png" alt="图：执行PUT接口的结果"></p><p>如何修改API名称及请求地址路径呢？<br>修改好后，重启HttpApi.Host层<br><font color='red'>注：Book2AppService名称后面的AppService要保留，前缀随便改</font></p><p><img src="%E4%BF%AE%E6%94%B9API%E5%90%8D%E7%A7%B0%E5%8F%8A%E8%AF%B7%E6%B1%82%E5%9C%B0%E5%9D%80%E8%B7%AF%E5%BE%841.png" alt="图：修改API名称及请求地址路径1"><br><img src="%E4%BF%AE%E6%94%B9API%E5%90%8D%E7%A7%B0%E5%8F%8A%E8%AF%B7%E6%B1%82%E5%9C%B0%E5%9D%80%E8%B7%AF%E5%BE%84%E7%BB%93%E6%9E%9C1.png" alt="图：修改API名称及请求地址路径结果1"></p><p>修改/api后面的RootPath，自己写东西的RootPath就都变成这个。推荐方式3<br><strong>方式1：</strong></p><pre class=" language-c#"><code class="language-c#">Configure<AbpAspNetCoreMvcOptions>(options =>&#123;    options.MinifyGeneratedScript = true;    options.ConventionalControllers.Create(typeof(BookStoreApplicationModule).Assembly,        opts => &#123; opts.RootPath = "MyBook";&#125;);&#125;);</code></pre><p><img src="%E4%BF%AE%E6%94%B9RootPath%E6%96%B9%E5%BC%8F1.png" alt="图：修改RootPath方式1"></p><p><strong>方式2：</strong></p><pre class=" language-c#"><code class="language-c#">Configure<AbpAspNetCoreMvcOptions>(options =>&#123;    options.MinifyGeneratedScript = true;    options.ConventionalControllers.Create(typeof(BookStoreApplicationModule).Assembly,        opts => &#123; opts.RootPath = "MyBook";&#125;);&#125;);</code></pre><p><img src="%E4%BF%AE%E6%94%B9RootPath%E6%96%B9%E5%BC%8F2.png" alt="图：修改RootPath方式2"></p><p><strong>方式3：推荐</strong></p><pre class=" language-c#"><code class="language-c#">//options.ConventionalControllers.Create(typeof(BookStoreApplicationModule).Assembly);options.MinifyGeneratedScript = true;options.ConventionalControllers.Create(typeof(BookStoreApplicationModule).Assembly,    opts => &#123; opts.RootPath = "MyBook";&#125;);</code></pre><p><img src="%E4%BF%AE%E6%94%B9RootPath%E6%96%B9%E5%BC%8F3.png" alt="图：修改RootPath方式3"></p><h2 id="运行Web层"><a href="#运行Web层" class="headerlink" title="运行Web层"></a>运行Web层</h2><p>HttpApi.Host层启动状态，然后再启动Web层调用后台接口。<br><img src="%E8%BF%90%E8%A1%8CWeb%E5%B1%82.png" alt="图：运行Web层"><br>启动时间较长，需要等待<br><img src="%E8%BF%90%E8%A1%8CWeb%E5%B1%82%E7%BB%93%E6%9E%9C.png" alt="图：运行Web层结果"></p><h2 id="部署项目到IIS服务器"><a href="#部署项目到IIS服务器" class="headerlink" title="部署项目到IIS服务器"></a>部署项目到IIS服务器</h2><p>服务器上安装.net core运行环境，hosting和runtime的安装包。这边都是下载的x64版本的<br><a href="https://dotnet.microsoft.com/download/dotnet-core/3.1">https://dotnet.microsoft.com/download/dotnet-core/3.1</a><br><img src="%E8%BF%90%E5%AE%89%E8%A3%85%E6%9C%8D%E5%8A%A1%E5%99%A8netcore%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83.png" alt="图：安装服务器netcore运行环境"><br><img src="%E4%B8%8B%E8%BD%BD%E7%9A%84netcore%E8%BF%90%E8%A1%8C%E7%8E%AF%E5%A2%83.png" alt="图：下载的netcore运行环境"><br><font color='red'>注：服务器中安装好上面两个运行环境，需要重启服务器</font></p><p>mstsc远程进入服务器,打开IIS管理界面，点击左边的服务器，右边点击“模块”<br><img src="%E6%9F%A5%E7%9C%8Bnetcore%E5%AE%89%E8%A3%85%E7%BB%93%E6%9E%9C1.png" alt="图：查看netcore安装结果1"><br>出现“AspNetCoreModuleV2”就说明前面的环境安装成功<br><img src="%E6%9F%A5%E7%9C%8Bnetcore%E5%AE%89%E8%A3%85%E7%BB%93%E6%9E%9C2.png" alt="图：查看netcore安装结果2"></p><p>随后，编译项目。这边结合前端框架Vue一起来部署。一定要<font color='red'>先部署后台接口</font>项目<br>选择“Release”方式，项目选择不带“IIS Express”的<br><img src="%E9%80%89%E6%8B%A9%E9%A1%B9%E7%9B%AE.png" alt="图：选择项目"><br>先点击Host项目，clean一下解决方案<br><img src="%E6%B8%85%E7%90%86%E4%B8%80%E4%B8%8BHost%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88.png" alt="图：清理一下Host解决方案"><br>再Rebuild一下解决方案<br><img src="Rebuild%E4%B8%80%E4%B8%8B%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88.png" alt="图：Rebuild一下解决方案"><br>进入到类似于下方的文件夹中，把所有文件压缩打包放到服务器上<br>……\Xhznl.HelloAbp.HttpApi.Host\bin\Release\netcoreapp3.1<br><img src="%E5%8E%8B%E7%BC%A9%E7%BC%96%E8%AF%91%E5%90%8E%E7%9A%84%E4%BB%A3%E7%A0%81.png" alt="图：压缩编译后的代码"><br>服务器的IIS中添加网站<br><img src="%E6%9C%8D%E5%8A%A1%E5%99%A8%E7%9A%84IIS%E4%B8%AD%E6%B7%BB%E5%8A%A0%E7%BD%91%E7%AB%99.png" alt="图：服务器的IIS中添加网站"><br><img src="%E8%AE%BE%E7%BD%AE%E5%90%8D%E7%A7%B0%E5%92%8C%E7%BD%91%E7%AB%99%E7%AB%AF%E5%8F%A3.png" alt="图：设置名称和网站端口"><br>随后在IIS的应用程序池中，右击项目，找到“基本设置”，改成“无托管代码”<br><img src="%E7%BD%91%E7%AB%99%E6%94%B9%E6%88%90%E6%97%A0%E6%89%98%E7%AE%A1%E4%BB%A3%E7%A0%811.png" alt="图：网站改成无托管代码1"><br><img src="%E7%BD%91%E7%AB%99%E6%94%B9%E6%88%90%E6%97%A0%E6%89%98%E7%AE%A1%E4%BB%A3%E7%A0%812.png" alt="图：网站改成无托管代码2"></p><p>然后再部署前端</p><p>================================资料===============================<br>1、TestProject.Host.Shared ，这个项目其实没多大用的到。看到Shared基本也能想到了。就是一些公用的配置之类的。比如他官方在这里做了个是否启用租户模式的配置。<br>2、TestProject.HttpApi.Host，这个比较重要，这是当前模块（我这个模块名字叫TestProject）的 主机宿主，里边各种模块相关的配置，运行起来这个，才能访问模块提供的api。<br>3、TestProject.IdentityServer，这是AuthServer，用的identityserver4，用户的授权全靠它了。这个服务在整个项目存在一个就行了，如果多模块，比如我又创建了个TestProject2，那么TestProject 和TestProject2 是共用 这个AuthServer 的。<br>4、TestProject.Web.Host 实际开发基本用不大到，这个官方给的一个例子，演示了客户端如何使用identityserver4进行登录<br>5、TestProject.Web.Unified 目前还没用到，也不知道有什么用，不说了这个<br>然后看下src项目<br>1、TestProject.Application ，相当于service层，abp框架可以做到把这层直接转为api，就不用写controller层代码了。具体如何转的后边会讲到。<br>2、TestProject.Application.Contracts 这层主要放Dto（数据传输对象）和权限的一些配置。<br>3、TestProject.Domain ，领域层，领域模型开发不了解的可以去找些资料看一下。如果用贫血模型，这层就类似之前的的Model层。<br>4、TestProject.Domain.Shared，看到Shared了，那么就知道是啥了，公用配置。官网这里给了多语言相关的配置<br>5、TestProject.EntityFrameworkCore 这个我就不用说了吧<br>6、TestProject.HttpApi 传统意义的Controller层，这里abp让它失业了。<br>其他几个目前没用到，估计也没啥用。<br>apb的主要结构就是这些，了解了这些，入门相当于是抬起了一个脚了。<br>================================资料===============================</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> ABPvNext </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> C# </tag>
+            
+            <tag> ABP二代框架 </tag>
+            
+            <tag> ABPvNext </tag>
+            
+            <tag> 学习笔记 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>HDFS整体运行机制—Hadoop(3)</title>
+      <link href="2020/10/15/hdfs-zheng-ti-yun-xing-ji-zhi-hadoop-3/"/>
+      <url>2020/10/15/hdfs-zheng-ti-yun-xing-ji-zhi-hadoop-3/</url>
+      
+        <content type="html"><![CDATA[<h2 id="HDFS整体运行机制"><a href="#HDFS整体运行机制" class="headerlink" title="HDFS整体运行机制"></a>HDFS整体运行机制</h2><p>如下图，用户看到的是一个完整的文件，NameNode节点服务器存用户完整的元数据信息，随后被切成好几块，分别存放在DataNode节点服务器上（为了保证数据安全，NameNode会定期将内存中的数据序列化到本地磁盘，DataNode上会存放相应数量的切片副本）<br><img src="HDFS%E6%95%B4%E4%BD%93%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6%E5%9B%BE.png" alt="图：HDFS整体运行机制"><br><font color='red'>综述：一个HDFS系统，由一台运行了NameNode的服务器，和N台运行了DataNode的服务器组成！</font></p><p>================================资料===============================<br>hdfs：分布式文件系统<br>hdfs有着文件系统共同的特征：<br>1、有目录结构，顶层目录是：  /<br>2、系统中存放的就是文件<br>3、系统可以提供对文件的：创建、删除、修改、查看、移动等功能</p><p>hdfs跟普通的单机文件系统有区别：<br>1、单机文件系统中存放的文件，是在一台机器的操作系统中<br>2、hdfs的文件系统会横跨N多的机器<br>3、单机文件系统中存放的文件，是在一台机器的磁盘上<br>4、hdfs文件系统中存放的文件，是落在n多机器的本地单机文件系统中（hdfs是一个基于linux本地文件系统之上的文件系统）</p><p>hdfs的工作机制：<br>1、客户把一个文件存入hdfs，其实hdfs会把这个文件切块后，分散存储在N台linux机器系统中（负责存储文件块的角色：data node）&lt;准确来说：切块的行为是由客户端决定的&gt;</p><p>2、一旦文件被切块存储，那么，hdfs中就必须有一个机制，来记录用户的每一个文件的切块信息，及每一块的具体存储机器（负责记录块信息的角色是：name node）</p><p>3、为了保证数据的安全性，hdfs可以将每一个文件块在集群中存放多个副本（到底存几个副本，是由当时存入该文件的客户端指定的）<br>================================资料===============================</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Hadoop </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 大数据 </tag>
+            
+            <tag> Hadoop </tag>
+            
+            <tag> HDFS </tag>
+            
+            <tag> HDFS运行机制 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>Hadoop基本概念(包括HDFS、MapReduce、Yarn-Hadoop)—Hadoop(2)</title>
+      <link href="2020/10/15/hadoop-ji-ben-gai-nian-bao-gua-hdfs-mapreduce-yarn-hadoop-hadoop-2/"/>
+      <url>2020/10/15/hadoop-ji-ben-gai-nian-bao-gua-hdfs-mapreduce-yarn-hadoop-hadoop-2/</url>
+      
+        <content type="html"><![CDATA[<h2 id="什么是Hadoop"><a href="#什么是Hadoop" class="headerlink" title="什么是Hadoop"></a>什么是Hadoop</h2><p>hadoop中有3个核心组件：<br>分布式文件系统：HDFS —— 实现将文件分布式存储在很多的服务器上<br>分布式运算编程框架：MAPREDUCE —— 实现在很多机器上分布式并行运算<br>分布式资源调度平台：YARN —— 帮用户调度大量的mapreduce程序，并合理分配运算资源</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Hadoop </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 大数据 </tag>
+            
+            <tag> Hadoop </tag>
+            
+            <tag> Hadoop基本概念 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>大数据基本概念及生活应用—Hadoop(1)</title>
+      <link href="2020/10/15/da-shu-ju-ji-ben-gai-nian-ji-sheng-huo-ying-yong-hadoop-1/"/>
+      <url>2020/10/15/da-shu-ju-ji-ben-gai-nian-ji-sheng-huo-ying-yong-hadoop-1/</url>
+      
+        <content type="html"><![CDATA[<h2 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h2><p>&emsp;在互联网技术发展到现今阶段，大量日常、工作等事务产生的数据都已经信息化，人类产生的数据量相比以前有了爆炸式的增长，以前的传统的数据处理技术已经无法胜任，需求催生技术，一套用来处理海量数据的软件工具应运而生，这就是大数据！</p><p>&ensp;&ensp;处理海量数据的核心技术：<br>海量数据存储：分布式<br>海量数据运算：分布式</p><p>&nbsp;&nbsp;&nbsp;&nbsp;这些核心技术的实现是不需要用户从零开始造轮子的存储和运算，都已经有大量的成熟的框架来用</p><hr><p><strong>存储框架：</strong><br>HDFS——分布式文件存储系统（HADOOP中的存储框架）<br>HBASE——分布式数据库系统<br>KAFKA——分布式消息缓存系统(实时流式数据处理场景中应用广泛)</p><p><strong>运算框架：</strong>（要解决的核心问题就是帮用户将处理逻辑在很多机器上并行）<br>MAPREDUCE—— 离线批处理/HADOOP中的运算框架<br><font color='red'>SPARK —— 离线批处理/实时流式计算</font><br>STORM —— 实时流式计算</p><p><strong>辅助类的工具：</strong>（解放大数据工程师的一些繁琐工作）<br>HIVE —— 数据仓库工具：可以接收sql，翻译成mapreduce或者spark程序运行<br>FLUME——数据采集<br>SQOOP——数据迁移<br>ELASTIC SEARCH —— 分布式的搜索引擎<br>…….<br/><br>换个角度说，大数据是：<br>1、有海量的数据<br>2、有对海量数据进行挖掘的需求<br>3、有对海量数据进行挖掘的软件工具（hadoop、spark、storm、flink、tez、impala……）</p><hr><h2 id="大数据在现实生活中的应用"><a href="#大数据在现实生活中的应用" class="headerlink" title="大数据在现实生活中的应用"></a>大数据在现实生活中的应用</h2><p>1、数据处理的最典型应用：公司的产品运营情况分析<br>2、电商推荐系统：基于海量的浏览行为、购物行为数据，进行大量的算法模型的运算，得出各类推荐结论，以供电商网站页面来为用户进行商品推荐<br>3、精准广告推送系统：基于海量的互联网用户的各类数据，统计分析，进行用户画像（得到用户的各种属性标签），然后可以为广告主进行有针对性的精准的广告投放</p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Hadoop </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> 大数据 </tag>
+            
+            <tag> Hadoop </tag>
+            
+            <tag> 大数据概念 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>使用命令创建我的第一篇博客</title>
+      <link href="2020/10/05/shi-yong-ming-ling-chuang-jian-wo-de-di-yi-pian-bo-ke/"/>
+      <url>2020/10/05/shi-yong-ming-ling-chuang-jian-wo-de-di-yi-pian-bo-ke/</url>
+      
+        <content type="html"><![CDATA[<h2 id="第一章"><a href="#第一章" class="headerlink" title="第一章"></a>第一章</h2><p>内容</p><hr><h2 id="第二章"><a href="#第二章" class="headerlink" title="第二章"></a>第二章</h2><p>内容</p><hr>]]></content>
+      
+      
+      <categories>
+          
+          <category> 命令创建hexo </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> hexo </tag>
+            
+            <tag> 命令 </tag>
+            
+            <tag> 博客 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+    
+    <entry>
+      <title>Hello World</title>
+      <link href="2020/10/05/hello-world/"/>
+      <url>2020/10/05/hello-world/</url>
+      
+        <content type="html"><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><pre class=" language-bash"><code class="language-bash">$ hexo new <span class="token string">"My New Post"</span></code></pre><p>More info: <a href="https://hexo.io/docs/writing.html">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><pre class=" language-bash"><code class="language-bash">$ hexo server</code></pre><p>More info: <a href="https://hexo.io/docs/server.html">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><pre class=" language-bash"><code class="language-bash">$ hexo generate</code></pre><p>More info: <a href="https://hexo.io/docs/generating.html">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><pre class=" language-bash"><code class="language-bash">$ hexo deploy</code></pre><p>More info: <a href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>]]></content>
+      
+      
+      <categories>
+          
+          <category> Hello World </category>
+          
+      </categories>
+      
+      
+        <tags>
+            
+            <tag> Hello World </tag>
+            
+            <tag> 第一次创建页面 </tag>
+            
+            <tag> 表单验证 </tag>
+            
+        </tags>
+      
+    </entry>
+    
+    
+  
+  
+</search>
