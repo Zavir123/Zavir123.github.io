@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>betfuture · 感谢相遇</title>
+
+    <!-- 外部动画库：GSAP -->
+    <script src="./gsap.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+            "Microsoft YaHei", Arial, sans-serif;
+            background: #020617;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        body {
+            min-height: 100vh;
+            background:
+                    radial-gradient(circle at 15% 10%, rgba(34, 197, 94, 0.22), transparent 28%),
+                    radial-gradient(circle at 85% 12%, rgba(59, 130, 246, 0.24), transparent 30%),
+                    linear-gradient(180deg, #020617 0%, #030712 46%, #052e16 100%);
+        }
+
+        .page {
+            position: relative;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .stadium-light {
+            position: absolute;
+            top: -140px;
+            width: 520px;
+            height: 520px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.28), transparent 62%);
+            filter: blur(18px);
+            opacity: 0.7;
+            pointer-events: none;
+            transition: opacity 1.2s ease, transform 1.2s ease;
+        }
+
+        .stadium-light.left {
+            left: -180px;
+        }
+
+        .stadium-light.right {
+            right: -180px;
+        }
+
+        .page.ended .stadium-light {
+            opacity: 0.08;
+            transform: scale(0.86);
+        }
+
+        .grid-bg {
+            position: absolute;
+            inset: 0;
+            opacity: 0.08;
+            pointer-events: none;
+            background-image:
+                    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 80%, transparent);
+        }
+
+        .hero {
+            position: relative;
+            z-index: 2;
+            max-width: 1160px;
+            margin: 0 auto;
+            padding: 32px 18px 56px;
+        }
+
+        .stage-card {
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 30px;
+            overflow: hidden;
+            background:
+                    linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(15, 23, 42, 0.34)),
+                    radial-gradient(circle at center, rgba(34, 197, 94, 0.2), transparent 58%);
+            box-shadow:
+                    0 34px 95px rgba(0, 0, 0, 0.5),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .stage {
+            position: relative;
+            height: 680px;
+            overflow: hidden;
+        }
+
+        .scoreboard {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 8;
+            width: min(92%, 760px);
+            padding: 16px 20px;
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            border-radius: 18px;
+            background:
+                    linear-gradient(180deg, rgba(2, 6, 23, 0.84), rgba(2, 6, 23, 0.55));
+            box-shadow:
+                    0 0 32px rgba(34, 197, 94, 0.16),
+                    inset 0 0 18px rgba(34, 197, 94, 0.08);
+            backdrop-filter: blur(16px);
+            text-align: center;
+            transition: opacity 1s ease, filter 1s ease;
+        }
+
+        .page.ended .scoreboard {
+            filter: brightness(0.55);
+            opacity: 0.68;
+        }
+
+        .score-main {
+            font-size: clamp(22px, 4vw, 42px);
+            line-height: 1.25;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+            color: #e5e7eb;
+            text-shadow: 0 0 24px rgba(34, 197, 94, 0.32);
+        }
+
+        .goal {
+            position: absolute;
+            left: 50%;
+            top: 210px;
+            width: 550px;
+            height: 275px;
+            transform: translateX(-50%);
+            z-index: 5;
+            filter: drop-shadow(0 28px 34px rgba(0, 0, 0, 0.55));
+            transition: opacity 1s ease, filter 1s ease;
+        }
+
+        .page.ended .goal {
+            opacity: 0.72;
+            filter: drop-shadow(0 16px 20px rgba(0, 0, 0, 0.8)) brightness(0.58);
+        }
+
+        .goal.shake {
+            animation: goalShake 0.5s ease-in-out;
+        }
+
+        @keyframes goalShake {
+            0% {
+                transform: translateX(-50%) rotate(0deg);
+            }
+            16% {
+                transform: translateX(-50%) rotate(-1.9deg);
+            }
+            32% {
+                transform: translateX(-50%) rotate(1.7deg);
+            }
+            48% {
+                transform: translateX(-50%) rotate(-1.2deg);
+            }
+            64% {
+                transform: translateX(-50%) rotate(0.9deg);
+            }
+            100% {
+                transform: translateX(-50%) rotate(0deg);
+            }
+        }
+
+        .goal-net {
+            position: absolute;
+            left: 42px;
+            right: 42px;
+            top: 20px;
+            bottom: 0;
+            background-image:
+                    linear-gradient(rgba(255, 255, 255, 0.16) 2px, transparent 2px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 2px, transparent 2px);
+            background-size: 36px 28px;
+            transform: perspective(420px) rotateX(9deg);
+            opacity: 0.9;
+        }
+
+        .post {
+            position: absolute;
+            z-index: 6;
+            background: linear-gradient(90deg, #e5e7eb, #ffffff, #9ca3af);
+            box-shadow:
+                    0 0 18px rgba(255, 255, 255, 0.45),
+                    inset 0 0 4px rgba(0, 0, 0, 0.28);
+        }
+
+        .post.top {
+            left: 28px;
+            right: 28px;
+            top: 0;
+            height: 18px;
+            border-radius: 999px;
+        }
+
+        .post.left,
+        .post.right {
+            top: 0;
+            bottom: 0;
+            width: 18px;
+            border-radius: 999px;
+        }
+
+        .post.left {
+            left: 28px;
+        }
+
+        .post.right {
+            right: 28px;
+        }
+
+        .post.flash {
+            background: linear-gradient(90deg, #facc15, #ffffff, #fb923c);
+            box-shadow:
+                    0 0 46px rgba(250, 204, 21, 0.98),
+                    0 0 96px rgba(249, 115, 22, 0.7);
+        }
+
+        .field {
+            position: absolute;
+            left: 50%;
+            bottom: -190px;
+            width: 1420px;
+            height: 540px;
+            transform: translateX(-50%) perspective(780px) rotateX(62deg);
+            transform-origin: center bottom;
+            border-radius: 50%;
+            background:
+                    repeating-linear-gradient(
+                            90deg,
+                            rgba(34, 197, 94, 0.25) 0 80px,
+                            rgba(22, 163, 74, 0.38) 80px 160px
+                    );
+            box-shadow: inset 0 0 130px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+            transition: opacity 1.2s ease, filter 1.2s ease;
+        }
+
+        .page.ended .field {
+            opacity: 0.35;
+            filter: brightness(0.45);
+        }
+
+        .field::before {
+            content: "";
+            position: absolute;
+            inset: 74px 230px;
+            border: 6px solid rgba(255, 255, 255, 0.42);
+            border-radius: 50%;
+        }
+
+        .field::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 6px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-50%);
+        }
+
+        .data-chip {
+            position: absolute;
+            z-index: 7;
+            padding: 7px 11px;
+            border: 1px solid rgba(34, 197, 94, 0.36);
+            border-radius: 999px;
+            background: rgba(2, 6, 23, 0.72);
+            color: #bbf7d0;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            box-shadow:
+                    0 0 20px rgba(34, 197, 94, 0.12),
+                    inset 0 0 12px rgba(34, 197, 94, 0.08);
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            white-space: nowrap;
+        }
+
+        .ball {
+            position: absolute;
+            left: 50%;
+            top: 74%;
+            width: 82px;
+            height: 82px;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            filter:
+                    drop-shadow(0 22px 22px rgba(0, 0, 0, 0.68))
+                    drop-shadow(0 0 24px rgba(255, 255, 255, 0.3));
+            opacity: 0;
+        }
+
+        .ball img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            object-fit: contain;
+        }
+
+        .speed-line {
+            position: absolute;
+            z-index: 9;
+            width: 180px;
+            height: 16px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8));
+            filter: blur(5px);
+            opacity: 0;
+            transform-origin: right center;
+        }
+
+        .impact-text {
+            position: absolute;
+            left: 50%;
+            top: 197px;
+            z-index: 14;
+            transform: translate(-50%, -50%) scale(0.5);
+            font-size: clamp(48px, 9vw, 118px);
+            font-weight: 1000;
+            color: #facc15;
+            text-shadow:
+                    0 0 20px rgba(250, 204, 21, 1),
+                    0 12px 30px rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            z-index: 15;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #facc15;
+            box-shadow: 0 0 16px rgba(250, 204, 21, 0.95);
+            opacity: 0;
+        }
+
+        .blackout {
+            position: absolute;
+            inset: 0;
+            z-index: 11;
+            pointer-events: none;
+            background:
+                    radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.12) 36%, rgba(0, 0, 0, 0.78) 100%);
+            opacity: 0;
+            transition: opacity 1.1s ease;
+        }
+
+        .page.ended .blackout {
+            opacity: 1;
+        }
+
+        .farewell {
+            position: absolute;
+            left: 50%;
+            bottom: 36px;
+            z-index: 20;
+            width: min(92%, 860px);
+            padding: 28px 30px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            border-radius: 24px;
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(18px);
+            box-shadow:
+                    0 26px 74px rgba(0, 0, 0, 0.46),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            transform: translateX(-50%);
+            opacity: 0;
+        }
+
+        .farewell h2 {
+            margin: 0 0 12px;
+            font-size: clamp(24px, 4vw, 40px);
+            line-height: 1.2;
+        }
+
+        .farewell p {
+            margin: 0 0 12px;
+            color: #cbd5e1;
+            font-size: 16px;
+            line-height: 1.9;
+        }
+
+        .farewell .last {
+            margin-top: 16px;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .btn {
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 20px;
+            cursor: pointer;
+            color: #04130a;
+            font-weight: 900;
+            background: linear-gradient(135deg, #86efac, #22c55e);
+            box-shadow: 0 12px 28px rgba(34, 197, 94, 0.3);
+        }
+
+        .bottom-copy {
+            margin-top: 18px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        .scanline {
+            position: absolute;
+            inset: 0;
+            z-index: 30;
+            pointer-events: none;
+            background: linear-gradient(
+                    to bottom,
+                    transparent,
+                    rgba(255, 255, 255, 0.055),
+                    transparent
+            );
+            height: 110px;
+            animation: scan 5.6s linear infinite;
+            opacity: 0.32;
+        }
+
+        @keyframes scan {
+            from {
+                transform: translateY(-140px);
+            }
+            to {
+                transform: translateY(760px);
+            }
+        }
+
+        @media (max-width: 760px) {
+            .hero {
+                padding: 22px 12px 36px;
+            }
+
+            .stage {
+                height: 720px;
+            }
+
+            .scoreboard {
+                top: 20px;
+            }
+
+            .goal {
+                top: 245px;
+                width: 350px;
+                height: 188px;
+            }
+
+            .goal-net {
+                left: 29px;
+                right: 29px;
+                background-size: 28px 23px;
+            }
+
+            .post.top {
+                left: 19px;
+                right: 19px;
+                height: 13px;
+            }
+
+            .post.left,
+            .post.right {
+                width: 13px;
+            }
+
+            .post.left {
+                left: 19px;
+            }
+
+            .post.right {
+                right: 19px;
+            }
+
+            .field {
+                width: 920px;
+                height: 440px;
+                bottom: -150px;
+            }
+
+            .ball {
+                width: 68px;
+                height: 68px;
+            }
+
+            .impact-text {
+                top: 232px;
+            }
+
+            .data-chip {
+                font-size: 12px;
+                padding: 6px 9px;
+            }
+
+            .farewell {
+                bottom: 22px;
+                padding: 22px 20px;
+            }
+
+            .farewell p {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="page" id="page">
+    <div class="stadium-light left"></div>
+    <div class="stadium-light right"></div>
+    <div class="grid-bg"></div>
+
+    <main class="hero">
+        <section class="stage-card">
+            <div class="stage" id="stage">
+                <div class="scanline"></div>
+
+                <div class="scoreboard" id="scoreboard">
+                    <div class="score-main">最后一脚击中了门框<br/>但这一路，我们认真踢过。</div>
+                </div>
+
+                <div class="goal" id="goal">
+                    <div class="goal-net"></div>
+                    <div class="post top" id="crossbar"></div>
+                    <div class="post left"></div>
+                    <div class="post right"></div>
+                </div>
+
+                <div class="field"></div>
+
+                <!-- 数据粒子：使用 data-left / data-top 保存初始分散位置，重播时会恢复 -->
+                <div class="data-chip" data-left="12%" data-top="28%" style="left: 12%; top: 28%;">SPM</div>
+                <div class="data-chip" data-left="20%" data-top="54%" style="left: 20%; top: 54%;">xG</div>
+                <div class="data-chip" data-left="76%" data-top="32%" style="left: 76%; top: 32%;">Odds</div>
+                <div class="data-chip" data-left="68%" data-top="58%" style="left: 68%; top: 58%;">AI</div>
+                <div class="data-chip" data-left="42%" data-top="64%" style="left: 42%; top: 64%;">Live</div>
+                <div class="data-chip" data-left="30%" data-top="38%" style="left: 30%; top: 38%;">Pressure</div>
+                <div class="data-chip" data-left="58%" data-top="42%" style="left: 58%; top: 42%;">Model</div>
+                <div class="data-chip" data-left="48%" data-top="28%" style="left: 48%; top: 28%;">Prediction</div>
+                <div class="data-chip" data-left="16%" data-top="68%" style="left: 16%; top: 68%;">Data</div>
+                <div class="data-chip" data-left="80%" data-top="70%" style="left: 80%; top: 70%;">Match</div>
+
+
+                <div class="ball" id="ball">
+                    <!-- 外部足球图片 -->
+                    <img
+                            src="./Soccerball.svg"
+                            alt="足球"
+                            draggable="false"
+                    />
+                </div>
+
+                <div class="impact-text" id="impactText">砰！</div>
+                <div class="blackout"></div>
+
+                <div class="farewell" id="farewell">
+                    <h2>感谢一路以来的陪伴</h2>
+
+                    <p>
+                        很遗憾，我们最终决定停止 betfuture 的相关服务。
+                        这个项目曾经承载着我们对足球数据、模型分析和比赛研究的很多期待。
+                    </p>
+
+                    <p>
+                        足球世界充满不确定性。我们努力奔跑、起脚、射门，
+                        但最后这一脚，还是狠狠砸在了门框上。
+                    </p>
+
+                    <p class="last">
+                        感谢所有曾经使用、关注和支持 betfuture 的朋友。
+                        感谢相遇，后会有期。
+                    </p>
+
+                    <div class="actions">
+                        <button class="btn" onclick="restartAnimation()">再看一遍</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="bottom-copy">
+            betfuture · 最后一脚击中了门框，但这一路，我们认真踢过。
+        </div>
+    </main>
+</div>
+
+<script>
+    const page = document.getElementById("page");
+    const stage = document.getElementById("stage");
+    const ball = document.getElementById("ball");
+    const goal = document.getElementById("goal");
+    const crossbar = document.getElementById("crossbar");
+    const impactText = document.getElementById("impactText");
+    const farewell = document.getElementById("farewell");
+    const speedLine = document.getElementById("speedLine");
+    const dataChips = document.querySelectorAll(".data-chip");
+
+    let timeline;
+
+    function isMobile() {
+        return window.innerWidth <= 760;
+    }
+
+    function getImpactTop() {
+        return isMobile() ? 250 : 215;
+    }
+
+    function getImpactTextTop() {
+        return isMobile() ? 232 : 197;
+    }
+
+    function resetDataChips() {
+        dataChips.forEach(chip => {
+            chip.style.left = chip.dataset.left;
+            chip.style.top = chip.dataset.top;
+
+            gsap.set(chip, {
+                opacity: 0,
+                scale: 0.8,
+                x: 0,
+                y: 0,
+                xPercent: 0,
+                yPercent: 0
+            });
+        });
+    }
+
+    function resetScene() {
+        page.classList.remove("ended");
+
+        if (timeline) {
+            timeline.kill();
+        }
+
+        gsap.killTweensOf("*");
+
+        document.querySelectorAll(".particle").forEach(item => item.remove());
+
+        goal.classList.remove("shake");
+        crossbar.classList.remove("flash");
+
+        resetDataChips();
+
+        gsap.set(ball, {
+            left: "50%",
+            top: "74%",
+            xPercent: -50,
+            yPercent: -50,
+            x: 0,
+            y: 0,
+            scale: 0.35,
+            rotate: -16,
+            opacity: 0
+        });
+
+        gsap.set(speedLine, {
+            left: "42%",
+            top: "66%",
+            rotate: -52,
+            opacity: 0
+        });
+
+        gsap.set(impactText, {
+            top: getImpactTextTop(),
+            opacity: 0,
+            scale: 0.5,
+            y: 0,
+            rotate: -10
+        });
+
+        gsap.set(farewell, {
+            opacity: 0,
+            y: 34
+        });
+    }
+
+    function createImpactParticles() {
+        document.querySelectorAll(".particle").forEach(item => item.remove());
+
+        const stageRect = stage.getBoundingClientRect();
+        const impactX = stageRect.width * 0.5;
+        const impactY = getImpactTextTop();
+
+        for (let i = 0; i < 56; i++) {
+            const particle = document.createElement("div");
+            particle.className = "particle";
+            particle.style.left = impactX + "px";
+            particle.style.top = impactY + "px";
+            stage.appendChild(particle);
+
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 50 + Math.random() * 190;
+            const x = Math.cos(angle) * distance;
+            const y = Math.sin(angle) * distance;
+
+            gsap.to(particle, {
+                x,
+                y,
+                opacity: 1,
+                scale: 0.25 + Math.random() * 1.45,
+                duration: 0.2,
+                ease: "power2.out",
+                onComplete: () => {
+                    gsap.to(particle, {
+                        opacity: 0,
+                        y: y + 64,
+                        duration: 0.65,
+                        ease: "power2.in",
+                        onComplete: () => particle.remove()
+                    });
+                }
+            });
+        }
+    }
+
+    function impactEffect() {
+        goal.classList.add("shake");
+        crossbar.classList.add("flash");
+        createImpactParticles();
+
+        gsap.fromTo(
+            impactText,
+            {
+                opacity: 0,
+                scale: 0.42,
+                rotate: -12,
+                y: 0
+            },
+            {
+                opacity: 1,
+                scale: 1,
+                rotate: 0,
+                duration: 0.15,
+                ease: "back.out(2.8)",
+                onComplete: () => {
+                    gsap.to(impactText, {
+                        opacity: 0,
+                        scale: 1.48,
+                        y: -38,
+                        duration: 0.48,
+                        delay: 0.14,
+                        ease: "power2.out"
+                    });
+                }
+            }
+        );
+
+        setTimeout(() => {
+            goal.classList.remove("shake");
+            crossbar.classList.remove("flash");
+        }, 560);
+    }
+
+    function runAnimation() {
+        resetScene();
+
+        timeline = gsap.timeline();
+
+        timeline
+            .fromTo(".stage-card",
+                {
+                    opacity: 0,
+                    y: 24,
+                    scale: 0.985
+                },
+                {
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    duration: 0.55,
+                    ease: "power3.out"
+                }
+            )
+
+            .fromTo(".scoreboard",
+                {
+                    opacity: 0,
+                    y: -18
+                },
+                {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.5,
+                    ease: "power3.out"
+                },
+                "-=0.24"
+            )
+
+            .to(".data-chip", {
+                opacity: 1,
+                scale: 1,
+                duration: 0.45,
+                stagger: 0.045,
+                ease: "back.out(1.8)"
+            }, "+=0.08")
+
+            /*
+             * 数据粒子汇聚到足球位置
+             */
+            .to(".data-chip", {
+                left: "50%",
+                top: "74%",
+                xPercent: -50,
+                yPercent: -50,
+                scale: 0.18,
+                opacity: 0,
+                duration: 0.7,
+                stagger: 0.035,
+                ease: "power3.inOut"
+            }, "+=0.28")
+
+            .to(ball, {
+                opacity: 1,
+                scale: isMobile() ? 0.9 : 1.08,
+                rotate: 0,
+                duration: 0.38,
+                ease: "back.out(2)"
+            }, "-=0.35")
+
+            /*
+             * 最后一脚射门
+             */
+            .to(speedLine, {
+                opacity: 0.85,
+                duration: 0.12
+            }, "+=0.1")
+
+            .to(ball, {
+                left: "48%",
+                top: "58%",
+                rotate: 360,
+                scale: isMobile() ? 0.82 : 0.94,
+                duration: 0.32,
+                ease: "power1.inOut"
+            })
+
+            .to(speedLine, {
+                left: "43%",
+                top: "54%",
+                rotate: -48,
+                duration: 0.18
+            }, "-=0.26")
+
+            .to(ball, {
+                left: "51%",
+                top: "39%",
+                rotate: 760,
+                scale: isMobile() ? 0.64 : 0.76,
+                duration: 0.28,
+                ease: "power2.in"
+            })
+
+            .to(speedLine, {
+                left: "45%",
+                top: "40%",
+                rotate: -58,
+                duration: 0.16
+            }, "-=0.22")
+
+            .to(ball, {
+                left: "50%",
+                top: getImpactTop(),
+                rotate: 1080,
+                scale: isMobile() ? 0.56 : 0.64,
+                duration: 0.22,
+                ease: "power4.in"
+            })
+
+            /*
+             * 击中横梁
+             */
+            .add(() => {
+                gsap.to(speedLine, {
+                    opacity: 0,
+                    duration: 0.1
+                });
+                impactEffect();
+            })
+
+            /*
+             * 足球被弹飞
+             */
+            .to(ball, {
+                x: isMobile() ? 150 : 230,
+                y: isMobile() ? -160 : -200,
+                rotate: 1680,
+                scale: isMobile() ? 0.46 : 0.52,
+                duration: 0.78,
+                ease: "power3.out"
+            }, "+=0.02")
+
+            .to(ball, {
+                x: isMobile() ? 310 : 560,
+                y: isMobile() ? -380 : -450,
+                rotate: 2380,
+                scale: 0.3,
+                opacity: 0.36,
+                duration: 0.78,
+                ease: "power2.in"
+            }, "-=0.2")
+
+            /*
+             * 球场熄灯
+             */
+            .add(() => {
+                page.classList.add("ended");
+            }, "-=0.18")
+
+            /*
+             * 告别文案浮现
+             */
+            .to(farewell, {
+                opacity: 1,
+                y: 0,
+                duration: 0.9,
+                ease: "power3.out"
+            }, "+=0.25");
+    }
+
+    function restartAnimation() {
+        runAnimation();
+    }
+
+    window.addEventListener("load", runAnimation);
+
+    window.addEventListener("resize", () => {
+        clearTimeout(window.__resizeTimer);
+        window.__resizeTimer = setTimeout(runAnimation, 220);
+    });
+</script>
+</body>
+</html>
